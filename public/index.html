@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#090d14">
-  <meta name="description" content="NARD يعرض تحليلات زيارة تقنية بموافقة الزائر، مع إخفاء عنوان IP وعدم استخدام GPS أو التتبع المستمر.">
+  <meta name="description" content="NARD يسجل عدد مشاهدات مجهولة دون جمع عنوان IP أو الموقع أو بيانات الجهاز.">
   <title>NARD | Visitor Intelligence</title>
-  <link rel="stylesheet" href="/styles.css?v=20261121-1">
-  <script defer src="/app.js?v=20261121-1"></script>
+  <link rel="stylesheet" href="/styles.css?v=20261121-2">
+  <script defer src="/app.js?v=20261121-2"></script>
 </head>
 <body>
   <div class="ambient ambient-one"></div>
@@ -17,14 +17,14 @@
       <span class="brand-mark">N</span>
       <span>NAR<span class="accent">D</span></span>
     </a>
-    <span class="secure-label"><span class="pulse"></span> تحليلات بموافقة الزائر</span>
+    <span class="secure-label"><span class="pulse"></span> إحصاءات مشاهدة مجهولة</span>
   </header>
 
   <main class="shell">
     <section class="hero">
       <p class="eyebrow">INSTANT VISITOR INTELLIGENCE</p>
       <h1>بيانات الزيارة، <span>بوضوح.</span></h1>
-      <p class="subtitle">يعرض NARD معلومات تقنية وشبكية تقريبية عن الزيارة بعد موافقة الزائر، مع لوحة تقارير وتصدير للبيانات.</p>
+      <p class="subtitle">يعرض NARD إحصاءات الوصول مع لوحة تقارير وتصدير، دون جمع بيانات شخصية للزائر.</p>
     </section>
 
     <section id="ownerPanel" class="panel">
@@ -32,7 +32,7 @@
         <div><p class="eyebrow">ADMIN CONTROL CENTER</p><h2>لوحة إدارة الزيارات</h2></div>
         <span class="status-dot"></span>
       </div>
-      <p class="muted">أنشئ رابطاً خاصاً. لن تُسجّل الزيارة إلا بعد أن يوافق الزائر على إشعار البيانات الظاهر له.</p>
+      <p class="muted">أنشئ رابطاً خاصاً. عند فتحه يُسجّل عدّاد مشاهدة مجهول ووقت الزيارة فقط، دون عنوان IP أو موقع أو معلومات جهاز.</p>
       <button id="createSession" class="primary-button" type="button">إنشاء رابط زيارة <span>↗</span></button>
       <div id="ownerResult" class="result hidden" aria-live="polite">
         <label for="shareLink">رابط الزيارة الخاص</label>
@@ -51,9 +51,9 @@
               <button id="exportCsv" class="secondary-button analytics-refresh" type="button">تصدير CSV</button>
             </div>
           </div>
-          <p class="analytics-disclaimer">تُحدّث اللوحة تلقائياً. الموقع الجغرافي تقدير من عنوان IP وقد يخطئ، ولا يحدد المنزل أو الحي. عنوان IP يُعرض محجوباً ولا يُحفظ كاملاً في سجل NARD.</p>
+          <p class="analytics-disclaimer">تُحدّث اللوحة تلقائياً. التسجيل التلقائي يحفظ وقت المشاهدة فقط؛ حقول الموقع والشبكة والجهاز تبقى ظاهرة في التقرير لكنها غير متاحة في وضع المشاهدة المجهولة.</p>
           <div class="analytics-stats">
-            <div class="analytics-stat"><strong id="visitTotal">0</strong><span>زيارات بموافقة</span></div>
+            <div class="analytics-stat"><strong id="visitTotal">0</strong><span>مشاهدات مسجلة</span></div>
             <div class="analytics-stat"><strong id="visitDevices">—</strong><span>أكثر نوع جهاز</span></div>
             <div class="analytics-stat"><strong id="visitCountries">—</strong><span>الدول المتاحة</span></div>
             <div class="analytics-stat"><strong id="visitProviders">—</strong><span>مزودو الشبكة</span></div>
@@ -62,7 +62,7 @@
             <div class="analytics-table-head"><span>تفاصيل كل زيارة</span><span id="analyticsUpdated">بانتظار البيانات</span></div>
             <div id="visitList" class="visit-list"><p class="empty-visits">لا توجد زيارات حتى الآن.</p></div>
           </div>
-          <p class="data-source-note">بيانات IP الجغرافية والشبكية: <a href="https://ipwho.is/" target="_blank" rel="noopener noreferrer">ipwho.is</a>. الخريطة تفتح بحثاً تقريبياً عن المدينة عبر OpenStreetMap.</p>
+          <p class="data-source-note">وضع المشاهدة المجهولة لا يطلب موقع الجهاز ولا يرسل عنوان IP إلى خدمة تحديد مواقع.</p>
         </section>
         <button id="stopSession" class="danger-button" type="button">إيقاف الرابط وحذف بيانات جلسته</button>
       </div>
@@ -71,34 +71,23 @@
 
     <section id="visitorPanel" class="panel hidden">
       <div class="panel-heading">
-        <div><p class="eyebrow">VISIT NOTICE</p><h2>موافقة تسجيل بيانات الزيارة</h2></div>
+        <div><p class="eyebrow">VISIT NOTICE</p><h2>تنبيه خصوصية</h2></div>
         <span class="status-dot"></span>
       </div>
-      <p class="muted">فتح الرابط لا يعني بدء التسجيل. اقرأ المعلومات التالية ثم اختر الموافقة أو الرفض.</p>
-      <div id="visitorConsent" class="privacy-note">
-        <strong>ما الذي سيُسجّل إذا وافقت؟</strong>
-        <ul>
-          <li>عنوان IP بصيغة محجوبة داخل سجل NARD، مع استخدامه مؤقتاً للحصول على الدولة والمحافظة/المنطقة والمدينة التقريبية.</li>
-          <li>العلم، ومزود الإنترنت، واسم المؤسسة، ورقم ASN ونوع الاتصال إذا توفرت من قاعدة بيانات IP.</li>
-          <li>المتصفح ونظام التشغيل ونوع الجهاز، ولغة المتصفح والمنطقة الزمنية وفئة حجم الشاشة.</li>
-          <li>وقت الزيارة واسم نطاق الصفحة المُحيلة فقط، دون مساراتها أو معاملات الرابط.</li>
-        </ul>
-        <p class="analytics-disclaimer">لإثراء بيانات IP، يُرسل عنوان IP إلى مزود خارجي هو <a href="https://ipwho.is/" target="_blank" rel="noopener noreferrer">ipwho.is</a>. قد تكون بيانات المدينة والمحافظة غير دقيقة ولا تكشف الحي أو عنوان المنزل. لا يجمع NARD إحداثيات GPS أو يتابع الحركة بعد الزيارة، ولا يقرأ الملفات أو جهات الاتصال أو رقم الهاتف. لا يُحفظ عنوان IP الكامل في سجل NARD. بيانات الجلسة مؤقتة وتُحذف عند انتهاء الرابط أو إيقافه.</p>
-        <div class="consent-actions">
-          <button id="acceptConsent" class="primary-button consent-accept" type="button">أوافق على تسجيل هذه البيانات</button>
-          <button id="declineConsent" class="text-button" type="button">لا أوافق، متابعة دون تسجيل</button>
-        </div>
+      <div class="privacy-note">
+        <strong>تنبيه:</strong>
+        <p>هذا الرابط يسجل وقت فتح الصفحة وعدد المشاهدات فقط. لا يجمع NARD عنوان IP أو الموقع الجغرافي أو المحافظة أو المدينة أو مزود الإنترنت أو بيانات المتصفح والجهاز في وضع المشاهدة المجهولة. تحديد الموقع الدقيق عبر GPS غير مستخدم.</p>
       </div>
-      <p id="visitorStatus" class="status-message" aria-live="polite">بانتظار اختيارك. لن تُرسل بيانات الزيارة قبل الموافقة.</p>
-    </section>
+      <p id="visitorStatus" class="status-message" aria-live="polite">جارٍ تسجيل مشاهدة مجهولة...</p>
+    </section>>
 
     <section class="trust-strip">
-      <div><span class="trust-icon">⌁</span><span>موافقة قبل التسجيل</span></div>
+      <div><span class="trust-icon">⌁</span><span>مشاهدات مجهولة فقط</span></div>
       <div><span class="trust-icon">◇</span><span>لا GPS أو حي دقيق</span></div>
       <div><span class="trust-icon">◌</span><span>لا تتبع مستمر</span></div>
     </section>
   </main>
 
-  <footer>NARD <span>•</span> بيانات تقريبية، شفافية، وتحكم بالجلسة.</footer>
+  <footer>NARD <span>•</span> إحصاءات مجهولة وشفافية في جمع البيانات.</footer>
 </body>
 </html>
