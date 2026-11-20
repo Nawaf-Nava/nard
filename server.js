@@ -1,6 +1,7 @@
 "use strict";
 
 const crypto = require("node:crypto");
+const net = require("node:net");
 const path = require("node:path");
 const express = require("express");
 const helmet = require("helmet");
@@ -20,7 +21,7 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'"],
+      imgSrc: ["'self'", "data:"],
       connectSrc: ["'self'"],
       fontSrc: ["'self'", "data:"],
       objectSrc: ["'none'"],
@@ -63,28 +64,73 @@ function findSession(tokenValue, tokenType) {
   return null;
 }
 
-function safeHeader(value) {
-  return typeof value === "string" ? value.replace(/[\r\n]/g, "").trim().slice(0, 80) : "";
+function safeText(value, max = 100) {
+  return typeof value === "string" ? value.replace(/[\r\n<>]/g, "").trim().slice(0, max) : "";
+}
+
+function maskedIp(ip) {
+  if (net.isIP(ip) === 4) {
+    const parts = ip.split(".");
+    parts[3] = "x";
+    return parts.join(".");
+  }
+  if (net.isIP(ip) === 6) return ip.split(":").slice(0, 3).join(":") + ":…";
+  return "غير متاح";
 }
 
 function classifyVisitor(userAgent) {
   const ua = String(userAgent || "").slice(0, 500);
-  const browser = /Edg\//.test(ua) ? "Edge"
-    : /Firefox\//.test(ua) ? "Firefox"
-    : /SamsungBrowser\//.test(ua) ? "Samsung Internet"
-    : /Chrome\//.test(ua) ? "Chrome"
-    : /Safari\//.test(ua) ? "Safari"
+  const browserMatch = ua.match(/(Edg|Firefox|SamsungBrowser|Chrome|CriOS|Version|Safari)\/([\d.]+)/);
+  const browserName = browserMatch
+    ? ({ Edg: "Edge", Firefox: "Firefox", SamsungBrowser: "Samsung Internet", Chrome: "Chrome", CriOS: "Chrome iOS", Version: "Safari", Safari: "Safari" }[browserMatch[1]] || "متصفح")
     : "متصفح غير معروف";
-  const os = /Android/.test(ua) ? "Android"
+  const osMatch = ua.match(/(Android|iPhone OS|iOS|Windows NT|Mac OS X|Linux)[\s/]*([\d._]*)/);
+  const osName = /Android/.test(ua) ? "Android"
     : /iPhone|iPad|iPod/.test(ua) ? "iOS"
     : /Windows/.test(ua) ? "Windows"
     : /Mac OS/.test(ua) ? "macOS"
     : /Linux/.test(ua) ? "Linux"
     : "غير معروف";
-  const device = /Tablet|iPad/.test(ua) ? "Tablet"
+  const device = /iPad|Tablet/.test(ua) ? "Tablet"
     : /Mobile|Android|iPhone/.test(ua) ? "Mobile"
     : "Desktop";
-  return { browser, os, device };
+  return {
+    browser: browserMatch ? browserName + " " + browserMatch[2] : browserName,
+    os: osMatch ? osName + (osMatch[2] ? " " + osMatch[2].replace(/_/g, ".") : "") : osName,
+    device
+  };
+}
+
+async function lookupIp(ip) {
+  if (!ip || !net.isIP(ip) || /^(127\.|10\.|192\.168\.|169\.254\.|::1$|fc|fd|fe80:)/i.test(ip)) return null;
+  try {
+    const response = await fetch("https://ipwho.is/" + encodeURIComponent(ip), {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(5000)
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (!data || data.success !== true) return null;
+    const connection = data.connection || {};
+    const timezone = data.timezone || {};
+    const flag = data.flag || {};
+    return {
+      country: safeText(data.country),
+      countryCode: safeText(data.country_code, 2).toUpperCase(),
+      flag: safeText(flag.emoji, 8),
+      region: safeText(data.region),
+      city: safeText(data.city),
+      isp: safeText(connection.isp),
+      organization: safeText(connection.org),
+      asn: connection.asn ? "AS" + String(connection.asn).replace(/^AS/i, "") : "",
+      connectionType: safeText(connection.connection_type),
+      ipTimezone: safeText(timezone.id || timezone.utc),
+      accuracy: "تقدير تقريبي من قاعدة بيانات IP",
+      mapQuery: [data.city, data.region, data.country].filter(Boolean).join(", ")
+    };
+  } catch (_) {
+    return null;
+  }
 }
 
 app.use(express.static(path.join(__dirname, "public"), {
@@ -92,8 +138,6 @@ app.use(express.static(path.join(__dirname, "public"), {
   etag: true,
   maxAge: "7d",
   setHeaders(res, filePath) {
-    // The HTML and executable frontend must always revalidate so a deploy
-    // cannot leave users running an older app.js for days.
     if (/\.(?:html|js|css)$/i.test(filePath)) {
       res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
     }
@@ -124,29 +168,51 @@ app.post("/api/sessions", (req, res) => {
   });
 });
 
-// Raw IP addresses and full user-agent strings are not stored in visit records.
-app.post("/api/sessions/:shareToken/visit", (req, res) => {
+// A visit is stored only after the visitor explicitly accepts the notice.
+// The raw IP is used transiently for city-level enrichment, then discarded.
+app.post("/api/sessions/:shareToken/visit", async (req, res) => {
   const session = findSession(req.params.shareToken, "shareToken");
   if (!session) return res.status(404).json({ error: "انتهت صلاحية رابط الزيارة." });
+  if (!req.body || req.body.consent !== true) {
+    return res.status(400).json({ error: "يلزم قبول إشعار البيانات قبل التسجيل." });
+  }
+  if (session.analytics.length >= 100) {
+    return res.status(429).json({ error: "وصلت الجلسة إلى حد الزيارات المحفوظة." });
+  }
 
-  const body = req.body || {};
-  const { browser, os, device } = classifyVisitor(body.userAgent);
-  const country = safeHeader(req.get("cf-ipcountry") || req.get("x-vercel-ip-country") || req.get("x-appengine-country"));
-  const city = safeHeader(req.get("cf-ipcity") || req.get("x-vercel-ip-city"));
+  const ip = String(req.ip || "").replace(/^::ffff:/, "");
+  const location = await lookupIp(ip);
+  const { browser, os, device } = classifyVisitor(req.body.userAgent);
+  const referrer = (() => {
+    try { return new URL(String(req.body.referrer || "")).hostname.slice(0, 120); }
+    catch (_) { return ""; }
+  })();
+
   const visit = {
     visitedAt: Date.now(),
-    country: country && country !== "XX" ? country : null,
-    city: city || null,
+    ipMasked: maskedIp(ip),
+    country: location ? location.country : "",
+    countryCode: location ? location.countryCode : "",
+    flag: location ? location.flag : "",
+    region: location ? location.region : "",
+    city: location ? location.city : "",
+    isp: location ? location.isp : "",
+    organization: location ? location.organization : "",
+    asn: location ? location.asn : "",
+    connectionType: location ? location.connectionType : "",
+    ipTimezone: location ? location.ipTimezone : "",
+    accuracy: location ? location.accuracy : "بيانات الموقع غير متاحة",
+    mapQuery: location ? location.mapQuery : "",
     browser,
     os,
     device,
-    language: safeHeader(body.language),
-    timezone: safeHeader(body.timezone),
-    screen: ["small", "medium", "large"].includes(body.screen) ? body.screen : "unknown"
+    language: safeText(req.body.language, 40),
+    timezone: safeText(req.body.timezone, 80),
+    screen: ["small", "medium", "large"].includes(req.body.screen) ? req.body.screen : "unknown",
+    referrer
   };
 
   session.analytics.push(visit);
-  if (session.analytics.length > 100) session.analytics.splice(0, session.analytics.length - 100);
   res.status(202).json({ ok: true });
 });
 
@@ -160,7 +226,14 @@ app.get("/api/sessions/:ownerToken/analytics", (req, res) => {
     acc[value] = (acc[value] || 0) + 1;
     return acc;
   }, {});
-  res.json({ total: visits.length, visits, devices: countBy("device"), countries: countBy("country") });
+  res.json({
+    total: visits.length,
+    visits,
+    devices: countBy("device"),
+    countries: countBy("country"),
+    browsers: countBy("browser"),
+    providers: countBy("isp")
+  });
 });
 
 app.delete("/api/sessions/:ownerToken", (req, res) => {
