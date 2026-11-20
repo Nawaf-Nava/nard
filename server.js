@@ -21,28 +21,43 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "blob:", "https://*.tile.openstreetmap.org"],
-      connectSrc: ["'self'", "https://*.tile.openstreetmap.org"],
+      imgSrc: ["'self'", "data:", "blob:", "https://tile.openstreetmap.org"],
+      connectSrc: ["'self'", "https://tile.openstreetmap.org"],
       fontSrc: ["'self'", "data:"],
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"],
       upgradeInsecureRequests: process.env.NODE_ENV === "production" ? [] : null
     }
   },
-  referrerPolicy: { policy: "no-referrer" }
+  // OpenStreetMap requires a normal page Referer for its public tile service.
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" }
 }));
+
 app.use(express.json({ limit: "8kb" }));
+app.use("/api/", (req, res, next) => {
+  res.set("Cache-Control", "no-store, private");
+  next();
+});
 app.use("/api/", rateLimit({
   windowMs: 60 * 1000,
   limit: 60,
   standardHeaders: "draft-7",
   legacyHeaders: false
 }));
-app.use("/vendor/leaflet", express.static(path.join(__dirname, "node_modules", "leaflet", "dist"), { maxAge: "1d" }));
+app.use("/api/sessions", rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false
+}));
+app.use("/vendor/leaflet", express.static(path.join(__dirname, "node_modules", "leaflet", "dist"), { maxAge: "7d" }));
 app.use(express.static(path.join(__dirname, "public"), {
   extensions: ["html"],
   etag: true,
-  maxAge: process.env.NODE_ENV === "production" ? "1h" : 0
+  maxAge: "7d",
+  setHeaders(res, filePath) {
+    if (filePath.endsWith(".html")) res.setHeader("Cache-Control", "no-cache");
+  }
 }));
 
 function token() {
@@ -72,6 +87,8 @@ function validCoordinates(body) {
   if (body.longitude < -180 || body.longitude > 180) return false;
   return true;
 }
+
+app.get("/healthz", (_req, res) => res.status(200).json({ ok: true }));
 
 app.post("/api/sessions", (req, res) => {
   cleanExpiredSessions();
