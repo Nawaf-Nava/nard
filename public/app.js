@@ -124,6 +124,8 @@ async function createSession() {
     const data = await api("/api/sessions", { method: "POST", body: "{}" });
     ownerToken = data.ownerToken;
     sessionStorage.setItem("nard_owner_token", ownerToken);
+    sessionStorage.setItem("nard_share_url", data.shareUrl);
+    sessionStorage.setItem("nard_expiry_text", "الرابط صالح لمدة " + data.ttlMinutes + " دقيقة.");
     $("shareLink").value = data.shareUrl;
     setText("expiryText", "الرابط صالح لمدة " + data.ttlMinutes + " دقيقة.");
     $("ownerResult").classList.remove("hidden");
@@ -144,6 +146,8 @@ async function stopSession() {
     await api("/api/sessions/" + encodeURIComponent(ownerToken), { method: "DELETE" });
   } catch (_) {}
   sessionStorage.removeItem("nard_owner_token");
+  sessionStorage.removeItem("nard_share_url");
+  sessionStorage.removeItem("nard_expiry_text");
   ownerToken = null;
   $("ownerResult").classList.add("hidden");
   $("createSession").classList.remove("hidden");
@@ -168,6 +172,8 @@ function initAdmin() {
   const saved = sessionStorage.getItem("nard_owner_token");
   if (saved) {
     ownerToken = saved;
+    $("shareLink").value = sessionStorage.getItem("nard_share_url") || "";
+    setText("expiryText", sessionStorage.getItem("nard_expiry_text") || "الجلسة محفوظة في علامة التبويب الحالية.");
     $("ownerResult").classList.remove("hidden");
     $("createSession").classList.add("hidden");
     startAnalyticsRefresh();
