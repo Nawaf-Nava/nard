@@ -176,42 +176,53 @@ function stopParticipantSharing() {
   setParticipantStatus("تم إيقاف مشاركة الموقع من هذه الصفحة.");
 }
 
+function startParticipantSharing() {
+  if (!navigator.geolocation) {
+    setParticipantStatus("المتصفح لا يدعم تحديد الموقع.", true);
+    $("startSharing").classList.remove("hidden");
+    return;
+  }
+  if (!window.isSecureContext) {
+    setParticipantStatus("يلزم فتح الرابط عبر HTTPS حتى يعمل تحديد الموقع.", true);
+    $("startSharing").classList.remove("hidden");
+    return;
+  }
+  if (watchId !== null) return;
+
+  stopped = false;
+  $("startSharing").classList.add("hidden");
+  $("stopSharing").classList.remove("hidden");
+  setParticipantStatus("يطلب GeoLink إذن الموقع من المتصفح. لن يُرسل موقعك ما لم تسمح بذلك...");
+  watchId = navigator.geolocation.watchPosition(
+    (position) => { void sendLocation(position); },
+    (error) => {
+      const messages = {
+        1: "لم تمنح إذن الموقع. لم تتم مشاركة أي إحداثيات. يمكنك تغيير الإذن من إعدادات المتصفح.",
+        2: "تعذر تحديد الموقع حالياً.",
+        3: "انتهت مهلة تحديد الموقع. يمكنك المحاولة مجدداً."
+      };
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      watchId = null;
+      setParticipantStatus(messages[error.code] || "تعذر الوصول إلى الموقع.", true);
+      $("startSharing").classList.remove("hidden");
+      $("stopSharing").classList.add("hidden");
+    },
+    { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
+  );
+}
+
 function initParticipant() {
   $("ownerPanel").classList.add("hidden");
   $("participantPanel").classList.remove("hidden");
-  $("startSharing").addEventListener("click", () => {
-    if (!navigator.geolocation) {
-      setParticipantStatus("المتصفح لا يدعم تحديد الموقع.", true);
-      return;
-    }
-    if (!window.isSecureContext) {
-      setParticipantStatus("يلزم فتح الرابط عبر HTTPS حتى يعمل تحديد الموقع.", true);
-      return;
-    }
-    stopped = false;
-    $("startSharing").disabled = true;
-    setParticipantStatus("بانتظار إذن الموقع من المتصفح...");
-    watchId = navigator.geolocation.watchPosition(
-      sendLocation,
-      (error) => {
-        const messages = {
-          1: "لم تمنح إذن الموقع. لم تتم مشاركة أي إحداثيات.",
-          2: "تعذر تحديد الموقع حالياً.",
-          3: "انتهت مهلة تحديد الموقع. حاول مجدداً."
-        };
-        setParticipantStatus(messages[error.code] || "تعذر الوصول إلى الموقع.", true);
-        $("startSharing").disabled = false;
-      },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
-    );
-    $("startSharing").classList.add("hidden");
-    $("startSharing").disabled = false;
-    $("stopSharing").classList.remove("hidden");
-  });
+  $("startSharing").addEventListener("click", startParticipantSharing);
   $("stopSharing").addEventListener("click", stopParticipantSharing);
   window.addEventListener("pagehide", () => {
     if (watchId !== null && navigator.geolocation) navigator.geolocation.clearWatch(watchId);
   });
+
+  // Request the browser's location permission as soon as the participant page opens.
+  // The browser still controls the permission prompt; this code cannot grant it.
+  startParticipantSharing();
 }
 
 if (isParticipant) initParticipant();
