@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#090d14">
-  <meta name="description" content="مشاركة موقع مؤقتة وبموافقة صريحة.">
-  <title>GeoLink | لوحة إنشاء روابط مشاركة الموقع</title>
+  <meta name="description" content="مشاركة موقع مؤقتة وواضحة وبموافقة صاحب الجهاز.">
+  <title>GeoLink | مشاركة الموقع بإذنك</title>
   <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="/styles.css">
   <script defer src="/vendor/leaflet/leaflet.js"></script>
@@ -26,7 +26,7 @@
     <section class="hero">
       <p class="eyebrow">TEMPORARY LOCATION SHARING</p>
       <h1>الموقع، <span>بإذنك فقط.</span></h1>
-      <p class="subtitle">أنشئ رابطاً مؤقتاً، وأرسله للشخص. لن تتم مشاركة أي موقع قبل موافقته ومنحه إذن المتصفح.</p>
+      <p class="subtitle">أنشئ رابطاً مؤقتاً وأرسله للشخص الذي سيشارك موقعه. لا يحتاج GeoLink إلى رقم هاتفه، ولا يحدد موقع أي شخص من دون إذنه.</p>
     </section>
 
     <section id="ownerPanel" class="panel">
@@ -37,7 +37,7 @@
         </div>
         <span class="status-dot"></span>
       </div>
-      <p class="muted">أنشئ رابطاً خاصاً وأرسله إلى الشخص الذي سيشارك موقعه. لا حاجة إلى رقم هاتفه.</p>
+      <p class="muted">أنشئ رابطاً خاصاً وأرسله إلى الشخص. ستظهر نقطة الموقع ودقة التحديد هنا بعد موافقته.</p>
       <button id="createSession" class="primary-button" type="button">إنشاء رابط مشاركة <span>↗</span></button>
       <div id="ownerResult" class="result hidden" aria-live="polite">
         <label for="shareLink">رابط المشاركة الخاص</label>
@@ -51,7 +51,14 @@
           <div><span class="live-indicator"></span> حالة الموقع</div>
           <span id="locationStatus" class="muted">بانتظار موافقة الشخص</span>
         </div>
-        <div id="map" class="map"></div>
+        <div class="map-frame" id="mapFrame">
+          <div id="map" class="map" aria-label="خريطة موقع المشاركة"></div>
+          <div class="map-toolbar">
+            <button id="recenterMap" class="map-button" type="button" disabled>توسيط الموقع</button>
+            <button id="fullscreenMap" class="map-button" type="button">ملء الشاشة</button>
+            <a id="openMap" class="map-button map-link" href="https://www.openstreetmap.org/" target="_blank" rel="noopener noreferrer">فتح الخريطة</a>
+          </div>
+        </div>
         <div id="locationDetails" class="location-details">لن يظهر الموقع حتى يوافق الشخص ويشارك موقعه.</div>
         <button id="stopSession" class="danger-button" type="button">إيقاف الجلسة وإبطال الرابط</button>
       </div>
@@ -66,24 +73,25 @@
         </div>
         <span class="status-dot"></span>
       </div>
-      <p class="muted">تمت دعوتك لمشاركة موقعك مؤقتاً. عند فتح هذه الصفحة سيطلب المتصفح إذن الموقع مباشرة. لن يُرسل أي موقع ما لم تسمح بالطلب.</p>
+      <p class="muted">هذا الرابط يطلب منك مشاركة موقعك مع منشئ الجلسة. سيظهر طلب إذن الموقع من المتصفح، ولن تُرسل الإحداثيات إذا رفضت الإذن.</p>
       <div class="privacy-note">
-        <strong>قبل المتابعة</strong>
+        <strong>معلومات مهمة قبل المشاركة</strong>
         <ul>
-          <li>موقعك لن يُشارك دون إذنك.</li>
-          <li>يمكنك إيقاف المشاركة من الزر أدناه أو بإغلاق الصفحة أو سحب إذن الموقع.</li>
-          <li>تنتهي الجلسة تلقائياً بعد مدة محدودة.</li>
+          <li>الموقع يُرسل بعد موافقتك على إذن المتصفح فقط.</li>
+          <li>يمكنك إيقاف المشاركة من الزر أدناه أو إغلاق الصفحة.</li>
+          <li>تنتهي الجلسة تلقائياً خلال مدة محدودة.</li>
+          <li>يُعرض آخر موقع مُرسل فقط، ولا يوجد سجلّ للمسارات.</li>
         </ul>
       </div>
-      <button id="startSharing" class="primary-button hidden" type="button">إعادة المحاولة</button>
+      <button id="startSharing" class="primary-button hidden" type="button">إعادة طلب إذن الموقع</button>
       <button id="stopSharing" class="danger-button hidden" type="button">إيقاف مشاركة موقعي</button>
       <p id="participantStatus" class="status-message" aria-live="polite"></p>
     </section>
 
     <section class="trust-strip">
       <div><span class="trust-icon">⌁</span><span>رابط مؤقت</span></div>
-      <div><span class="trust-icon">◇</span><span>موافقة صريحة</span></div>
-      <div><span class="trust-icon">◌</span><span>لا نحفظ سجل المواقع</span></div>
+      <div><span class="trust-icon">◇</span><span>إذن المتصفح مطلوب</span></div>
+      <div><span class="trust-icon">◌</span><span>آخر موقع فقط</span></div>
     </section>
   </main>
 
