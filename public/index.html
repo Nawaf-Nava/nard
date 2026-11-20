@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090d14">
+  <meta name="description" content="مشاركة موقع مؤقتة وبموافقة صريحة.">
+  <title>GeoLink | مشاركة الموقع</title>
+  <link rel="preconnect" href="https://unpkg.com">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <link rel="stylesheet" href="/styles.css">
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script defer src="/app.js"></script>
+</head>
+<body>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="GeoLink الرئيسية">
+      <span class="brand-mark">G</span>
+      <span>GEO<span class="accent">LINK</span></span>
+    </a>
+    <span class="secure-label"><span class="pulse"></span> مشاركة بموافقة المستخدم</span>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <p class="eyebrow">TEMPORARY LOCATION SHARING</p>
+      <h1>الموقع، <span>بإذنك فقط.</span></h1>
+      <p class="subtitle">أنشئ رابطاً مؤقتاً، وأرسله للشخص. لن تتم مشاركة أي موقع قبل موافقته ومنحه إذن المتصفح.</p>
+    </section>
+
+    <section id="ownerPanel" class="panel">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">CONTROL CENTER</p>
+          <h2>إنشاء جلسة مشاركة</h2>
+        </div>
+        <span class="status-dot"></span>
+      </div>
+      <p class="muted">أنشئ رابطاً خاصاً وأرسله إلى الشخص الذي سيشارك موقعه. لا حاجة إلى رقم هاتفه.</p>
+      <button id="createSession" class="primary-button" type="button">إنشاء رابط مشاركة <span>↗</span></button>
+      <div id="ownerResult" class="result hidden" aria-live="polite">
+        <label for="shareLink">رابط المشاركة الخاص</label>
+        <div class="copy-row">
+          <input id="shareLink" type="text" readonly>
+          <button id="copyLink" class="secondary-button" type="button">نسخ</button>
+        </div>
+        <p id="expiryText" class="small-note"></p>
+        <div class="divider"></div>
+        <div class="live-heading">
+          <div><span class="live-indicator"></span> حالة الموقع</div>
+          <span id="locationStatus" class="muted">بانتظار موافقة الشخص</span>
+        </div>
+        <div id="map" class="map"></div>
+        <div id="locationDetails" class="location-details">لن يظهر الموقع حتى يوافق الشخص ويشارك موقعه.</div>
+        <button id="stopSession" class="danger-button" type="button">إيقاف الجلسة وإبطال الرابط</button>
+      </div>
+      <div id="ownerError" class="error hidden" role="alert"></div>
+    </section>
+
+    <section id="participantPanel" class="panel hidden">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">LOCATION REQUEST</p>
+          <h2>طلب مشاركة موقعك</h2>
+        </div>
+        <span class="status-dot"></span>
+      </div>
+      <p class="muted">تمت دعوتك لمشاركة موقعك مؤقتاً. لن يتم إرسال موقعك إلا بعد ضغط الزر أدناه والموافقة على طلب الموقع الذي يعرضه المتصفح.</p>
+      <div class="privacy-note">
+        <strong>قبل المتابعة</strong>
+        <ul>
+          <li>موقعك لن يُشارك دون إذنك.</li>
+          <li>يمكنك إيقاف المشاركة في أي وقت بإغلاق الصفحة أو سحب إذن الموقع.</li>
+          <li>تنتهي الجلسة تلقائياً بعد مدة محدودة.</li>
+        </ul>
+      </div>
+      <button id="startSharing" class="primary-button" type="button">أوافق، مشاركة موقعي</button>
+      <button id="stopSharing" class="danger-button hidden" type="button">إيقاف مشاركة موقعي</button>
+      <p id="participantStatus" class="status-message" aria-live="polite"></p>
+    </section>
+
+    <section class="trust-strip">
+      <div><span class="trust-icon">⌁</span><span>رابط مؤقت</span></div>
+      <div><span class="trust-icon">◇</span><span>موافقة صريحة</span></div>
+      <div><span class="trust-icon">◌</span><span>لا نحفظ سجل المواقع</span></div>
+    </section>
+  </main>
+
+  <footer>GeoLink <span>•</span> مشاركة واضحة، وتحكم كامل.</footer>
+</body>
+</html>
