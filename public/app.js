@@ -31,8 +31,6 @@ function setText(id, value) {
 }
 
 async function recordVisitOnce() {
-  const key = "nard_visit_" + shareToken;
-  if (sessionStorage.getItem(key)) return;
   const width = window.innerWidth || 0;
   const screen = width < 600 ? "small" : width < 1024 ? "medium" : "large";
 
@@ -46,7 +44,6 @@ async function recordVisitOnce() {
         screen
       })
     });
-    sessionStorage.setItem(key, "sent");
     setText("visitorStatus", "تم تسجيل بيانات الزيارة التقنية مرة واحدة.");
   } catch (error) {
     setText("visitorStatus", error.message);
