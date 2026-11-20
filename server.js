@@ -106,7 +106,8 @@ app.post("/api/sessions", (req, res) => {
     shareToken,
     createdAt: now,
     expiresAt: now + SESSION_TTL_MS,
-    lastLocation: null
+    lastLocation: null,
+    analytics: []
   };
   sessions.set(id, session);
 
@@ -117,6 +118,52 @@ app.post("/api/sessions", (req, res) => {
     expiresAt: new Date(session.expiresAt).toISOString(),
     ttlMinutes: TTL_MINUTES
   });
+});
+
+// Store only coarse, consented visit metadata. Raw IP addresses and full user-agent strings are never saved.
+function classifyVisitor(userAgent) {
+  const ua = String(userAgent || "").slice(0, 500);
+  const browser = /Edg\//.test(ua) ? "Edge" : /Firefox\//.test(ua) ? "Firefox" : /SamsungBrowser\//.test(ua) ? "Samsung Internet" : /Chrome\//.test(ua) ? "Chrome" : /Safari\//.test(ua) ? "Safari" : "متصفح غير معروف";
+  const os = /Android/.test(ua) ? "Android" : /iPhone|iPad|iPod/.test(ua) ? "iOS" : /Windows/.test(ua) ? "Windows" : /Mac OS/.test(ua) ? "macOS" : /Linux/.test(ua) ? "Linux" : "غير معروف";
+  const device = /Tablet|iPad/.test(ua) ? "Tablet" : /Mobile|Android|iPhone/.test(ua) ? "Mobile" : "Desktop";
+  return { browser, os, device };
+}
+function safeHeader(value) {
+  return typeof value === "string" ? value.replace(/[\\r\\n]/g, "").trim().slice(0, 80) : "";
+}
+app.post("/api/sessions/:shareToken/visit", (req, res) => {
+  const session = findSession(req.params.shareToken, "shareToken");
+  if (!session) return res.status(404).json({ error: "انتهت صلاحية رابط المشاركة." });
+  const body = req.body || {};
+  const { browser, os, device } = classifyVisitor(body.userAgent);
+  const country = safeHeader(req.get("cf-ipcountry") || req.get("x-vercel-ip-country") || req.get("x-appengine-country"));
+  const city = safeHeader(req.get("cf-ipcity") || req.get("x-vercel-ip-city"));
+  const visit = {
+    visitedAt: Date.now(),
+    country: country && country !== "XX" ? country : null,
+    city: city || null,
+    browser,
+    os,
+    device,
+    language: safeHeader(body.language),
+    timezone: safeHeader(body.timezone),
+    screen: ["small", "medium", "large"].includes(body.screen) ? body.screen : "unknown"
+  };
+  session.analytics.push(visit);
+  if (session.analytics.length > 100) session.analytics.splice(0, session.analytics.length - 100);
+  res.status(202).json({ ok: true });
+});
+app.get("/api/sessions/:ownerToken/analytics", (req, res) => {
+  const session = findSession(req.params.ownerToken, "ownerToken");
+  if (!session) return res.status(404).json({ error: "الجلسة غير موجودة أو انتهت صلاحيتها." });
+  const visits = session.analytics.slice().reverse();
+  const countBy = (key) => visits.reduce((acc, item) => {
+    const value = item[key] || "غير متاح";
+    acc[value] = (acc[value] || 0) + 1;
+    return acc;
+  }, {});
+  res.set("Cache-Control", "no-store, private");
+  res.json({ total: visits.length, visits, devices: countBy("device"), countries: countBy("country") });
 });
 
 app.post("/api/sessions/:shareToken/location", (req, res) => {
