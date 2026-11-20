@@ -40,9 +40,9 @@ app.use("/api/", (_req, res, next) => {
 app.use("/api/", rateLimit({
   windowMs: 60 * 1000, limit: 60, standardHeaders: "draft-7", legacyHeaders: false
 }));
-app.use("/api/sessions", rateLimit({
+const createSessionLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: "draft-7", legacyHeaders: false
-}));
+});
 
 function token() {
   return crypto.randomBytes(32).toString("base64url");
@@ -146,7 +146,7 @@ app.use(express.static(path.join(__dirname, "public"), {
 
 app.get("/healthz", (_req, res) => res.status(200).json({ ok: true }));
 
-app.post("/api/sessions", (req, res) => {
+app.post("/api/sessions", createSessionLimiter, (req, res) => {
   cleanExpiredSessions();
   if (sessions.size >= 5000) {
     return res.status(503).json({ error: "الخدمة مشغولة حالياً. حاول لاحقاً." });
