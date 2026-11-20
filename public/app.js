@@ -9,6 +9,7 @@ let pollTimer = null;
 let map = null;
 let marker = null;
 let accuracyCircle = null;
+let latestPoint = null;
 let watchId = null;
 let stopped = false;
 
@@ -40,10 +41,16 @@ function initializeMap() {
     return false;
   }
   if (!map) {
-    map = L.map("map", { scrollWheelZoom: false }).setView([20, 0], 2);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    map = L.map("map", {
+      scrollWheelZoom: true,
+      zoomControl: true,
+      preferCanvas: true
+    }).setView([20, 0], 2);
+
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      minZoom: 2,
       maxZoom: 19,
-      attribution: "&copy; OpenStreetMap"
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>'
     }).addTo(map);
   }
   requestAnimationFrame(() => map && map.invalidateSize());
@@ -53,14 +60,45 @@ function initializeMap() {
 function setupMap(latitude, longitude, accuracy) {
   if (!initializeMap()) return;
   const point = [latitude, longitude];
-  if (!marker) marker = L.marker(point).addTo(map);
-  else marker.setLatLng(point);
-  if (!accuracyCircle) accuracyCircle = L.circle(point, { radius: accuracy || 0, color: "#55a7ff", fillOpacity: 0.08 }).addTo(map);
-  else accuracyCircle.setLatLng(point).setRadius(accuracy || 0);
-  map.setView(point, 15);
-  requestAnimationFrame(() => map && map.invalidateSize());
+  latestPoint = point;
+  if (!marker) {
+    marker = L.marker(point, { title: "آخر موقع تمت مشاركته" }).addTo(map);
+    marker.bindPopup("آخر موقع تمت مشاركته");
+  } else {
+    marker.setLatLng(point);
+  }
+  if (!accuracyCircle) {
+    accuracyCircle = L.circle(point, {
+      radius: accuracy || 0,
+      color: "#55a7ff",
+      weight: 1.5,
+      fillColor: "#55a7ff",
+      fillOpacity: 0.12
+    }).addTo(map);
+  } else {
+    accuracyCircle.setLatLng(point).setRadius(accuracy || 0);
+  }
+  map.setView(point, Math.max(map.getZoom(), 15));
+  $("recenterMap").disabled = false;
+  $("openMap").href = `https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=16/${latitude}/${longitude}`;
   $("locationDetails").textContent =
     `خط العرض: ${latitude.toFixed(5)} | خط الطول: ${longitude.toFixed(5)} | دقة تقريبية: ${Math.round(accuracy || 0)} متر`;
+  requestAnimationFrame(() => map && map.invalidateSize());
+}
+
+function centerMap() {
+  if (map && latestPoint) map.setView(latestPoint, 16, { animate: true });
+}
+
+async function toggleFullscreen() {
+  const frame = $("mapFrame");
+  try {
+    if (!document.fullscreenElement) await frame.requestFullscreen();
+    else await document.exitFullscreen();
+    setTimeout(() => map && map.invalidateSize(), 150);
+  } catch (_) {
+    showError("تعذر تفعيل وضع ملء الشاشة في هذا المتصفح.");
+  }
 }
 
 async function pollOwnerSession() {
@@ -102,7 +140,7 @@ async function createSession() {
     $("createSession").classList.add("hidden");
     initializeMap();
     await pollOwnerSession();
-    pollTimer = setInterval(pollOwnerSession, 4000);
+    pollTimer = setInterval(pollOwnerSession, 5000);
   } catch (error) {
     showError(error.message);
   } finally {
@@ -119,6 +157,7 @@ async function stopOwnerSession() {
   } catch (_) {}
   sessionStorage.removeItem("geolink_owner_token");
   ownerToken = null;
+  latestPoint = null;
   $("ownerResult").classList.add("hidden");
   $("createSession").classList.remove("hidden");
   $("locationStatus").textContent = "تم إيقاف الجلسة";
@@ -139,6 +178,9 @@ function initOwner() {
     }
   });
   $("stopSession").addEventListener("click", stopOwnerSession);
+  $("recenterMap").addEventListener("click", centerMap);
+  $("fullscreenMap").addEventListener("click", toggleFullscreen);
+  document.addEventListener("fullscreenchange", () => setTimeout(() => map && map.invalidateSize(), 100));
 
   const savedToken = sessionStorage.getItem("geolink_owner_token");
   if (savedToken) {
@@ -146,9 +188,8 @@ function initOwner() {
     $("ownerResult").classList.remove("hidden");
     $("createSession").classList.add("hidden");
     initializeMap();
-    // The owner token is intentionally kept only in this browser tab's session storage.
     pollOwnerSession().then(() => {
-      if (ownerToken) pollTimer = setInterval(pollOwnerSession, 4000);
+      if (ownerToken) pollTimer = setInterval(pollOwnerSession, 5000);
     });
   }
 }
@@ -156,7 +197,7 @@ function initOwner() {
 function setParticipantStatus(message, isError = false) {
   const el = $("participantStatus");
   el.textContent = message;
-  el.style.color = isError ? "#ff9eaa" : "";
+  el.classList.toggle("status-error", isError);
 }
 
 async function sendLocation(position) {
@@ -217,7 +258,7 @@ function startParticipantSharing() {
       $("startSharing").classList.remove("hidden");
       $("stopSharing").classList.add("hidden");
     },
-    { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
+    { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
   );
 }
 
@@ -230,8 +271,7 @@ function initParticipant() {
     if (watchId !== null && navigator.geolocation) navigator.geolocation.clearWatch(watchId);
   });
 
-  // Request the browser's location permission as soon as the participant page opens.
-  // The browser still controls the permission prompt; this code cannot grant it.
+  // The share page is an explicit request. The browser still owns the permission prompt.
   startParticipantSharing();
 }
 
