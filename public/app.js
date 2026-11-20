@@ -6,6 +6,7 @@ const isVisitor = parts[0] === "share" && Boolean(parts[1]);
 const shareToken = isVisitor ? parts[1] : null;
 let ownerToken = null;
 let analyticsTimer = null;
+let latestAnalytics = { total: 0, visits: [] };
 
 async function api(url, options = {}) {
   const response = await fetch(url, {
@@ -30,6 +31,10 @@ function setText(id, value) {
   if (element) element.textContent = value;
 }
 
+function mapSearchUrl(query) {
+  return "https://www.openstreetmap.org/search?query=" + encodeURIComponent(query);
+}
+
 async function recordVisitOnce() {
   const width = window.innerWidth || 0;
   const screen = width < 600 ? "small" : width < 1024 ? "medium" : "large";
@@ -38,29 +43,49 @@ async function recordVisitOnce() {
     await api("/api/sessions/" + encodeURIComponent(shareToken) + "/visit", {
       method: "POST",
       body: JSON.stringify({
+        consent: true,
         userAgent: navigator.userAgent,
         language: navigator.language || "",
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
-        screen
+        screen,
+        referrer: document.referrer || ""
       })
     });
-    setText("visitorStatus", "تم تسجيل بيانات الزيارة التقنية مرة واحدة.");
+    $("visitorConsent").classList.add("hidden");
+    setText("visitorStatus", "تم تسجيل الزيارة. يمكنك إغلاق هذه الصفحة الآن.");
   } catch (error) {
     setText("visitorStatus", error.message);
+    $("visitorStatus").classList.add("status-error");
   }
 }
 
+function addDetail(parent, label, value) {
+  if (!value) return;
+  const line = document.createElement("div");
+  line.className = "visit-detail";
+  const name = document.createElement("span");
+  name.textContent = label;
+  const content = document.createElement("strong");
+  content.textContent = value;
+  line.append(name, content);
+  parent.appendChild(line);
+}
+
 function renderVisits(data) {
+  latestAnalytics = data || { total: 0, visits: [] };
+  const visits = Array.isArray(data.visits) ? data.visits : [];
   setText("visitTotal", String(data.total || 0));
   const topDevice = Object.entries(data.devices || {}).sort((a, b) => b[1] - a[1])[0];
   setText("visitDevices", topDevice ? topDevice[0] : "—");
   const countries = Object.keys(data.countries || {}).filter((value) => value !== "غير متاح");
   setText("visitCountries", countries.length ? String(countries.length) : "—");
+  const providers = Object.entries(data.providers || {}).filter(([name]) => name !== "غير متاح").length;
+  setText("visitProviders", providers ? String(providers) : "—");
   setText("analyticsUpdated", "آخر تحديث: " + new Date().toLocaleTimeString("ar"));
 
   const list = $("visitList");
   list.replaceChildren();
-  if (!data.visits || !data.visits.length) {
+  if (!visits.length) {
     const empty = document.createElement("p");
     empty.className = "empty-visits";
     empty.textContent = "لا توجد زيارات مسجلة حتى الآن.";
@@ -68,24 +93,45 @@ function renderVisits(data) {
     return;
   }
 
-  data.visits.slice(0, 50).forEach((visit) => {
+  visits.slice(0, 50).forEach((visit) => {
     const row = document.createElement("article");
     row.className = "visit-row";
-    const main = document.createElement("div");
-    main.className = "visit-main";
+    const heading = document.createElement("div");
+    heading.className = "visit-row-heading";
     const title = document.createElement("strong");
-    title.textContent = [visit.device, visit.browser].filter(Boolean).join(" · ");
-    const meta = document.createElement("span");
-    meta.textContent = [visit.os, visit.language, visit.timezone, "الشاشة: " + visit.screen].filter(Boolean).join(" · ");
-    main.append(title, meta);
-    const side = document.createElement("div");
-    side.className = "visit-side";
-    const place = document.createElement("strong");
-    place.textContent = [visit.city, visit.country].filter(Boolean).join("، ") || "الموقع التقريبي غير متاح";
+    title.textContent = [visit.flag, visit.city, visit.region, visit.country].filter(Boolean).join(" · ") || "الموقع التقريبي غير متاح";
     const time = document.createElement("span");
     time.textContent = new Date(visit.visitedAt).toLocaleString("ar");
-    side.append(place, time);
-    row.append(main, side);
+    heading.append(title, time);
+
+    const grid = document.createElement("div");
+    grid.className = "visit-details-grid";
+    addDetail(grid, "عنوان IP المحجوب", visit.ipMasked);
+    addDetail(grid, "مزود الإنترنت", visit.isp);
+    addDetail(grid, "المؤسسة", visit.organization);
+    addDetail(grid, "ASN", visit.asn);
+    addDetail(grid, "نوع الاتصال", visit.connectionType);
+    addDetail(grid, "منطقة IP الزمنية", visit.ipTimezone);
+    addDetail(grid, "المتصفح", visit.browser);
+    addDetail(grid, "نظام التشغيل", visit.os);
+    addDetail(grid, "الجهاز", visit.device);
+    addDetail(grid, "لغة المتصفح", visit.language);
+    addDetail(grid, "منطقة الجهاز الزمنية", visit.timezone);
+    addDetail(grid, "مصدر الإحالة", visit.referrer);
+    addDetail(grid, "دقة الموقع", visit.accuracy);
+
+    const actions = document.createElement("div");
+    actions.className = "visit-actions";
+    if (visit.mapQuery) {
+      const map = document.createElement("a");
+      map.className = "map-button";
+      map.href = mapSearchUrl(visit.mapQuery);
+      map.target = "_blank";
+      map.rel = "noopener noreferrer";
+      map.textContent = "عرض المدينة على الخريطة";
+      actions.appendChild(map);
+    }
+    row.append(heading, grid, actions);
     list.appendChild(row);
   });
 }
@@ -110,6 +156,45 @@ function startAnalyticsRefresh() {
 function stopAnalyticsRefresh() {
   if (analyticsTimer) clearInterval(analyticsTimer);
   analyticsTimer = null;
+}
+
+function downloadFile(filename, content, mimeType) {
+  const blob = new Blob([content], { type: mimeType + ";charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function exportJson() {
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    total: latestAnalytics.total || 0,
+    visits: latestAnalytics.visits || []
+  };
+  downloadFile("nard-visit-report.json", JSON.stringify(payload, null, 2), "application/json");
+}
+
+function exportCsv() {
+  const columns = [
+    ["visitedAt", "وقت الزيارة"], ["ipMasked", "IP محجوب"], ["flag", "العلم"],
+    ["country", "الدولة"], ["region", "المحافظة أو المنطقة"], ["city", "المدينة"],
+    ["isp", "مزود الإنترنت"], ["organization", "المؤسسة"], ["asn", "ASN"],
+    ["connectionType", "نوع الاتصال"], ["ipTimezone", "منطقة IP الزمنية"],
+    ["browser", "المتصفح"], ["os", "نظام التشغيل"], ["device", "الجهاز"],
+    ["language", "اللغة"], ["timezone", "المنطقة الزمنية للجهاز"],
+    ["screen", "فئة الشاشة"], ["referrer", "مصدر الإحالة"], ["accuracy", "دقة الموقع"]
+  ];
+  const quote = (value) => '"' + String(value == null ? "" : value).replace(/"/g, '""') + '"';
+  const rows = [columns.map((column) => quote(column[1])).join(",")];
+  (latestAnalytics.visits || []).forEach((visit) => {
+    rows.push(columns.map(([key]) => quote(key === "visitedAt" ? new Date(visit[key]).toISOString() : visit[key])).join(","));
+  });
+  downloadFile("nard-visit-report.csv", "\uFEFF" + rows.join("\r\n"), "text/csv");
 }
 
 async function createSession() {
@@ -146,6 +231,7 @@ async function stopSession() {
   sessionStorage.removeItem("nard_share_url");
   sessionStorage.removeItem("nard_expiry_text");
   ownerToken = null;
+  latestAnalytics = { total: 0, visits: [] };
   $("ownerResult").classList.add("hidden");
   $("createSession").classList.remove("hidden");
   setText("analyticsUpdated", "تم إيقاف الرابط وحذف بيانات جلسته من الذاكرة.");
@@ -154,6 +240,8 @@ async function stopSession() {
 function initAdmin() {
   $("createSession").addEventListener("click", createSession);
   $("refreshAnalytics").addEventListener("click", loadAnalytics);
+  $("exportJson").addEventListener("click", exportJson);
+  $("exportCsv").addEventListener("click", exportCsv);
   $("stopSession").addEventListener("click", stopSession);
   $("copyLink").addEventListener("click", async () => {
     try {
@@ -180,7 +268,15 @@ function initAdmin() {
 function initVisitor() {
   $("ownerPanel").classList.add("hidden");
   $("visitorPanel").classList.remove("hidden");
-  void recordVisitOnce();
+  $("acceptConsent").addEventListener("click", async () => {
+    $("acceptConsent").disabled = true;
+    $("acceptConsent").textContent = "جارٍ التسجيل...";
+    await recordVisitOnce();
+  });
+  $("declineConsent").addEventListener("click", () => {
+    $("visitorConsent").classList.add("hidden");
+    setText("visitorStatus", "لم يتم تسجيل بيانات الزيارة. يمكنك إغلاق الصفحة.");
+  });
 }
 
 if (isVisitor) initVisitor();
