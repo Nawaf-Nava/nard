@@ -120,6 +120,75 @@ async function pollOwnerSession() {
     stopPolling();
   }
 }
+async function loadAnalytics() {
+  if (!ownerToken) return;
+  const button = $("refreshAnalytics");
+  if (button) button.disabled = true;
+  try {
+    const data = await api(`/api/sessions/${encodeURIComponent(ownerToken)}/analytics`);
+    $("visitTotal").textContent = String(data.total || 0);
+    const topDevice = Object.entries(data.devices || {}).sort((a,b) => b[1]-a[1])[0];
+    $("visitDevices").textContent = topDevice ? topDevice[0] : "—";
+    const countryCount = Object.keys(data.countries || {}).filter(x => x !== "غير متاح").length;
+    $("visitCountries").textContent = countryCount ? String(countryCount) : "—";
+    $("analyticsUpdated").textContent = "آخر تحديث: " + new Date().toLocaleTimeString("ar");
+    const list = $("visitList");
+    list.replaceChildren();
+    if (!data.visits || !data.visits.length) {
+      const empty = document.createElement("p");
+      empty.className = "empty-visits";
+      empty.textContent = "لا توجد زيارات بموافقة الزائر حتى الآن.";
+      list.appendChild(empty);
+    } else {
+      data.visits.slice(0, 20).forEach((visit) => {
+        const row = document.createElement("article");
+        row.className = "visit-row";
+        const main = document.createElement("div");
+        main.className = "visit-main";
+        const title = document.createElement("strong");
+        title.textContent = [visit.device, visit.browser].filter(Boolean).join(" · ");
+        const meta = document.createElement("span");
+        meta.textContent = [visit.os, visit.language, visit.timezone].filter(Boolean).join(" · ") || "تفاصيل إضافية غير متاحة";
+        main.append(title, meta);
+        const side = document.createElement("div");
+        side.className = "visit-side";
+        const place = document.createElement("strong");
+        place.textContent = [visit.city, visit.country].filter(Boolean).join("، ") || "الموقع التقريبي غير متاح";
+        const time = document.createElement("span");
+        time.textContent = new Date(visit.visitedAt).toLocaleString("ar");
+        side.append(place, time);
+        row.append(main, side);
+        list.appendChild(row);
+      });
+    }
+  } catch (error) {
+    $("analyticsUpdated").textContent = error.message;
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+async function recordVisitAnalytics() {
+  const key = `geolink_analytics_${shareToken}`;
+  if (sessionStorage.getItem(key)) return;
+  try {
+    const width = window.innerWidth || 0;
+    const screenClass = width < 600 ? "small" : width < 1024 ? "medium" : "large";
+    await api(`/api/sessions/${encodeURIComponent(shareToken)}/visit`, {
+      method: "POST",
+      body: JSON.stringify({
+        userAgent: navigator.userAgent,
+        language: navigator.language || "",
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+        screen: screenClass
+      })
+    });
+    sessionStorage.setItem(key, "sent");
+  } catch (_) {
+    // Analytics are optional and must never interrupt location sharing.
+  }
+}
+
 function stopPolling() {
   if (pollTimer) clearInterval(pollTimer);
   pollTimer = null;
@@ -140,6 +209,7 @@ async function createSession() {
     $("createSession").classList.add("hidden");
     initializeMap();
     await pollOwnerSession();
+    await loadAnalytics();
     pollTimer = setInterval(pollOwnerSession, 5000);
   } catch (error) {
     showError(error.message);
@@ -178,6 +248,7 @@ function initOwner() {
     }
   });
   $("stopSession").addEventListener("click", stopOwnerSession);
+  $("refreshAnalytics").addEventListener("click", loadAnalytics);
   $("recenterMap").addEventListener("click", centerMap);
   $("fullscreenMap").addEventListener("click", toggleFullscreen);
   document.addEventListener("fullscreenchange", () => setTimeout(() => map && map.invalidateSize(), 100));
@@ -188,8 +259,11 @@ function initOwner() {
     $("ownerResult").classList.remove("hidden");
     $("createSession").classList.add("hidden");
     initializeMap();
-    pollOwnerSession().then(() => {
-      if (ownerToken) pollTimer = setInterval(pollOwnerSession, 5000);
+    pollOwnerSession().then(async () => {
+      if (ownerToken) {
+        await loadAnalytics();
+        pollTimer = setInterval(pollOwnerSession, 5000);
+      }
     });
   }
 }
@@ -267,6 +341,18 @@ function initParticipant() {
   $("participantPanel").classList.remove("hidden");
   $("startSharing").addEventListener("click", startParticipantSharing);
   $("stopSharing").addEventListener("click", stopParticipantSharing);
+  $("acceptAnalytics").addEventListener("click", async () => {
+    $("analyticsConsent").classList.add("hidden");
+    sessionStorage.setItem(`geolink_analytics_choice_${shareToken}`, "accepted");
+    await recordVisitAnalytics();
+  });
+  $("rejectAnalytics").addEventListener("click", () => {
+    $("analyticsConsent").classList.add("hidden");
+    sessionStorage.setItem(`geolink_analytics_choice_${shareToken}`, "rejected");
+  });
+  const analyticsChoice = sessionStorage.getItem(`geolink_analytics_choice_${shareToken}`);
+  if (analyticsChoice === "accepted") void recordVisitAnalytics();
+  if (analyticsChoice === "rejected") $("analyticsConsent").classList.add("hidden");
   window.addEventListener("pagehide", () => {
     if (watchId !== null && navigator.geolocation) navigator.geolocation.clearWatch(watchId);
   });
