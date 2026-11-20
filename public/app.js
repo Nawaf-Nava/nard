@@ -33,24 +33,32 @@ async function api(url, options = {}) {
   return data;
 }
 
-function setupMap(latitude, longitude, accuracy) {
+function initializeMap() {
   if (!window.L) {
-    $("locationDetails").textContent = "تعذر تحميل الخريطة. الإحداثيات وصلت إلى الجلسة.";
-    return;
+    const details = $("locationDetails");
+    if (details) details.textContent = "تعذر تحميل مكتبة الخريطة المحلية. أعد تحميل الصفحة.";
+    return false;
   }
   if (!map) {
-    map = L.map("map", { scrollWheelZoom: false }).setView([latitude, longitude], 15);
+    map = L.map("map", { scrollWheelZoom: false }).setView([20, 0], 2);
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       attribution: "&copy; OpenStreetMap"
     }).addTo(map);
   }
+  requestAnimationFrame(() => map && map.invalidateSize());
+  return true;
+}
+
+function setupMap(latitude, longitude, accuracy) {
+  if (!initializeMap()) return;
   const point = [latitude, longitude];
   if (!marker) marker = L.marker(point).addTo(map);
   else marker.setLatLng(point);
   if (!accuracyCircle) accuracyCircle = L.circle(point, { radius: accuracy || 0, color: "#55a7ff", fillOpacity: 0.08 }).addTo(map);
   else accuracyCircle.setLatLng(point).setRadius(accuracy || 0);
-  map.setView(point, Math.max(map.getZoom(), 14));
+  map.setView(point, 15);
+  requestAnimationFrame(() => map && map.invalidateSize());
   $("locationDetails").textContent =
     `خط العرض: ${latitude.toFixed(5)} | خط الطول: ${longitude.toFixed(5)} | دقة تقريبية: ${Math.round(accuracy || 0)} متر`;
 }
@@ -92,6 +100,7 @@ async function createSession() {
     $("expiryText").textContent = `الرابط صالح لمدة ${data.ttlMinutes} دقيقة.`;
     $("ownerResult").classList.remove("hidden");
     $("createSession").classList.add("hidden");
+    initializeMap();
     await pollOwnerSession();
     pollTimer = setInterval(pollOwnerSession, 4000);
   } catch (error) {
@@ -136,6 +145,7 @@ function initOwner() {
     ownerToken = savedToken;
     $("ownerResult").classList.remove("hidden");
     $("createSession").classList.add("hidden");
+    initializeMap();
     // The owner token is intentionally kept only in this browser tab's session storage.
     pollOwnerSession().then(() => {
       if (ownerToken) pollTimer = setInterval(pollOwnerSession, 4000);
