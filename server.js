@@ -19,11 +19,11 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "https://unpkg.com"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "blob:", "https://*.tile.openstreetmap.org"],
       connectSrc: ["'self'", "https://*.tile.openstreetmap.org"],
-      fontSrc: ["'self'", "https://unpkg.com", "data:"],
+      fontSrc: ["'self'", "data:"],
       objectSrc: ["'none'"],
       frameAncestors: ["'none'"],
       upgradeInsecureRequests: process.env.NODE_ENV === "production" ? [] : null
@@ -38,6 +38,7 @@ app.use("/api/", rateLimit({
   standardHeaders: "draft-7",
   legacyHeaders: false
 }));
+app.use("/vendor/leaflet", express.static(path.join(__dirname, "node_modules", "leaflet", "dist"), { maxAge: "1d" }));
 app.use(express.static(path.join(__dirname, "public"), {
   extensions: ["html"],
   etag: true,
@@ -138,11 +139,19 @@ app.delete("/api/sessions/:ownerToken", (req, res) => {
 app.get("/share/:shareToken", (req, res) => {
   const session = findSession(req.params.shareToken, "shareToken");
   if (!session) return res.status(404).sendFile(path.join(__dirname, "public", "expired.html"));
+  res.set("Cache-Control", "no-store, private");
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-app.get("*", (req, res) => {
+app.get("/admin", (req, res) => {
+  res.set("Cache-Control", "no-store, private");
   res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+app.get("/", (req, res) => res.redirect(302, "/admin"));
+
+app.use((req, res) => {
+  res.status(404).send("Not found");
 });
 
 app.listen(PORT, "0.0.0.0", () => {
