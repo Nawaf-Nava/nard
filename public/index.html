@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#090d14">
-  <meta name="description" content="NARD يسجل بيانات زيارة تقنية محدودة بشفافية، دون GPS أو تتبع مستمر.">
+  <meta name="description" content="NARD يعرض تحليلات زيارة تقنية بموافقة الزائر، مع إخفاء عنوان IP وعدم استخدام GPS أو التتبع المستمر.">
   <title>NARD | Visitor Intelligence</title>
-  <link rel="stylesheet" href="/styles.css?v=20261120-2">
-  <script defer src="/app.js?v=20261120-2"></script>
+  <link rel="stylesheet" href="/styles.css?v=20261121-1">
+  <script defer src="/app.js?v=20261121-1"></script>
 </head>
 <body>
   <div class="ambient ambient-one"></div>
@@ -17,14 +17,14 @@
       <span class="brand-mark">N</span>
       <span>NAR<span class="accent">D</span></span>
     </a>
-    <span class="secure-label"><span class="pulse"></span> تسجيل زيارة لمرة واحدة</span>
+    <span class="secure-label"><span class="pulse"></span> تحليلات بموافقة الزائر</span>
   </header>
 
   <main class="shell">
     <section class="hero">
       <p class="eyebrow">INSTANT VISITOR INTELLIGENCE</p>
       <h1>بيانات الزيارة، <span>بوضوح.</span></h1>
-      <p class="subtitle">يسجل NARD معلومات تقنية محدودة عند فتح رابط الزيارة، ويعرضها لصاحب الرابط في لوحة الإدارة.</p>
+      <p class="subtitle">يعرض NARD معلومات تقنية وشبكية تقريبية عن الزيارة بعد موافقة الزائر، مع لوحة تقارير وتصدير للبيانات.</p>
     </section>
 
     <section id="ownerPanel" class="panel">
@@ -32,7 +32,7 @@
         <div><p class="eyebrow">ADMIN CONTROL CENTER</p><h2>لوحة إدارة الزيارات</h2></div>
         <span class="status-dot"></span>
       </div>
-      <p class="muted">أنشئ رابطاً خاصاً. عند فتحه، يُسجّل حدث زيارة واحد وتظهر تفاصيله هنا تلقائياً.</p>
+      <p class="muted">أنشئ رابطاً خاصاً. لن تُسجّل الزيارة إلا بعد أن يوافق الزائر على إشعار البيانات الظاهر له.</p>
       <button id="createSession" class="primary-button" type="button">إنشاء رابط زيارة <span>↗</span></button>
       <div id="ownerResult" class="result hidden" aria-live="polite">
         <label for="shareLink">رابط الزيارة الخاص</label>
@@ -44,50 +44,61 @@
         <div class="divider"></div>
         <section class="analytics-panel" aria-labelledby="analyticsTitle">
           <div class="analytics-heading">
-            <div><p class="eyebrow">LIVE VISIT LOG</p><h3 id="analyticsTitle">سجل الزيارات</h3></div>
-            <button id="refreshAnalytics" class="secondary-button analytics-refresh" type="button">تحديث</button>
+            <div><p class="eyebrow">VISITOR INTELLIGENCE</p><h3 id="analyticsTitle">سجل الزيارات</h3></div>
+            <div class="analytics-tools">
+              <button id="refreshAnalytics" class="secondary-button analytics-refresh" type="button">تحديث</button>
+              <button id="exportJson" class="secondary-button analytics-refresh" type="button">تصدير JSON</button>
+              <button id="exportCsv" class="secondary-button analytics-refresh" type="button">تصدير CSV</button>
+            </div>
           </div>
-          <p class="analytics-disclaimer">تُحدّث هذه اللوحة تلقائياً. قد تظهر الدولة أو المدينة تقريبياً إذا أتاحها مزود الاستضافة. لا تُحفظ عناوين IP الخام أو إحداثيات GPS.</p>
+          <p class="analytics-disclaimer">تُحدّث اللوحة تلقائياً. الموقع الجغرافي تقدير من عنوان IP وقد يخطئ، ولا يحدد المنزل أو الحي. عنوان IP يُعرض محجوباً ولا يُحفظ كاملاً في سجل NARD.</p>
           <div class="analytics-stats">
-            <div class="analytics-stat"><strong id="visitTotal">0</strong><span>زيارات مسجلة</span></div>
+            <div class="analytics-stat"><strong id="visitTotal">0</strong><span>زيارات بموافقة</span></div>
             <div class="analytics-stat"><strong id="visitDevices">—</strong><span>أكثر نوع جهاز</span></div>
             <div class="analytics-stat"><strong id="visitCountries">—</strong><span>الدول المتاحة</span></div>
+            <div class="analytics-stat"><strong id="visitProviders">—</strong><span>مزودو الشبكة</span></div>
           </div>
           <div class="analytics-table-wrap">
-            <div class="analytics-table-head"><span>تفاصيل الزيارة</span><span id="analyticsUpdated">بانتظار البيانات</span></div>
+            <div class="analytics-table-head"><span>تفاصيل كل زيارة</span><span id="analyticsUpdated">بانتظار البيانات</span></div>
             <div id="visitList" class="visit-list"><p class="empty-visits">لا توجد زيارات حتى الآن.</p></div>
           </div>
+          <p class="data-source-note">بيانات IP الجغرافية والشبكية: <a href="https://ipwho.is/" target="_blank" rel="noopener noreferrer">ipwho.is</a>. الخريطة تفتح بحثاً تقريبياً عن المدينة عبر OpenStreetMap.</p>
         </section>
-        <button id="stopSession" class="danger-button" type="button">إيقاف الرابط وحذف بيانات الجلسة</button>
+        <button id="stopSession" class="danger-button" type="button">إيقاف الرابط وحذف بيانات جلسته</button>
       </div>
       <div id="ownerError" class="error hidden" role="alert"></div>
     </section>
 
     <section id="visitorPanel" class="panel hidden">
       <div class="panel-heading">
-        <div><p class="eyebrow">VISIT NOTICE</p><h2>معلومات تُسجّل عند فتح الرابط</h2></div>
+        <div><p class="eyebrow">VISIT NOTICE</p><h2>موافقة تسجيل بيانات الزيارة</h2></div>
         <span class="status-dot"></span>
       </div>
-      <p class="muted">تم فتح رابط NARD. يسجل النظام حدث زيارة واحد لهذه الجلسة ويعرضه لصاحب الرابط.</p>
-      <div class="privacy-note">
-        <strong>ما المعلومات التي قد تُسجّل؟</strong>
+      <p class="muted">فتح الرابط لا يعني بدء التسجيل. اقرأ المعلومات التالية ثم اختر الموافقة أو الرفض.</p>
+      <div id="visitorConsent" class="privacy-note">
+        <strong>ما الذي سيُسجّل إذا وافقت؟</strong>
         <ul>
-          <li>نوع الجهاز ونظام التشغيل والمتصفح، بصورة تقريبية.</li>
-          <li>لغة المتصفح والمنطقة الزمنية وفئة حجم الشاشة.</li>
-          <li>وقت الزيارة، والدولة أو المدينة التقريبية إذا أتاحها مزود الاستضافة.</li>
+          <li>عنوان IP بصيغة محجوبة داخل سجل NARD، مع استخدامه مؤقتاً للحصول على الدولة والمحافظة/المنطقة والمدينة التقريبية.</li>
+          <li>العلم، ومزود الإنترنت، واسم المؤسسة، ورقم ASN ونوع الاتصال إذا توفرت من قاعدة بيانات IP.</li>
+          <li>المتصفح ونظام التشغيل ونوع الجهاز، ولغة المتصفح والمنطقة الزمنية وفئة حجم الشاشة.</li>
+          <li>وقت الزيارة واسم نطاق الصفحة المُحيلة فقط، دون مساراتها أو معاملات الرابط.</li>
         </ul>
-        <p class="analytics-disclaimer">لا يطلب NARD إذن GPS، ولا يجمع إحداثيات الموقع الدقيق، ولا يقرأ الملفات أو جهات الاتصال أو رقم الهاتف، ولا يتابع الحركة بعد تسجيل الزيارة. لا تُحفظ عناوين IP الخام في سجل الزيارات.</p>
+        <p class="analytics-disclaimer">لإثراء بيانات IP، يُرسل عنوان IP إلى مزود خارجي هو <a href="https://ipwho.is/" target="_blank" rel="noopener noreferrer">ipwho.is</a>. قد تكون بيانات المدينة والمحافظة غير دقيقة ولا تكشف الحي أو عنوان المنزل. لا يجمع NARD إحداثيات GPS أو يتابع الحركة بعد الزيارة، ولا يقرأ الملفات أو جهات الاتصال أو رقم الهاتف. لا يُحفظ عنوان IP الكامل في سجل NARD. بيانات الجلسة مؤقتة وتُحذف عند انتهاء الرابط أو إيقافه.</p>
+        <div class="consent-actions">
+          <button id="acceptConsent" class="primary-button consent-accept" type="button">أوافق على تسجيل هذه البيانات</button>
+          <button id="declineConsent" class="text-button" type="button">لا أوافق، متابعة دون تسجيل</button>
+        </div>
       </div>
-      <p id="visitorStatus" class="status-message" aria-live="polite">جارٍ تسجيل حدث الزيارة مرة واحدة...</p>
+      <p id="visitorStatus" class="status-message" aria-live="polite">بانتظار اختيارك. لن تُرسل بيانات الزيارة قبل الموافقة.</p>
     </section>
 
     <section class="trust-strip">
-      <div><span class="trust-icon">⌁</span><span>حدث واحد عند الفتح</span></div>
-      <div><span class="trust-icon">◇</span><span>لا GPS</span></div>
+      <div><span class="trust-icon">⌁</span><span>موافقة قبل التسجيل</span></div>
+      <div><span class="trust-icon">◇</span><span>لا GPS أو حي دقيق</span></div>
       <div><span class="trust-icon">◌</span><span>لا تتبع مستمر</span></div>
     </section>
   </main>
 
-  <footer>NARD <span>•</span> معلومات تقنية محدودة وبشفافية.</footer>
+  <footer>NARD <span>•</span> بيانات تقريبية، شفافية، وتحكم بالجلسة.</footer>
 </body>
 </html>
