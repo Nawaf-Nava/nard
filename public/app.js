@@ -35,16 +35,47 @@ function mapSearchUrl(query) {
   return "https://www.openstreetmap.org/search?query=" + encodeURIComponent(query);
 }
 
-async function recordVisitOnce() {
+async function recordConsentVisit() {
+  const button = $("consentAccept");
+  button.disabled = true;
+  button.textContent = "جارٍ تسجيل البيانات بموافقتك...";
+  try {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    const width = window.innerWidth;
+    const screen = width < 600 ? "small" : width < 1100 ? "medium" : "large";
+    await api("/api/sessions/" + encodeURIComponent(shareToken) + "/visit", {
+      method: "POST",
+      body: JSON.stringify({
+        consent: true,
+        language: navigator.language || "",
+        timezone,
+        screen
+      })
+    });
+    setText("visitorStatus", "تم تسجيل بيانات الزيارة التي وافقت على مشاركتها. يمكنك إغلاق الصفحة الآن.");
+    $("consentActions").classList.add("hidden");
+  } catch (error) {
+    setText("visitorStatus", error.message);
+    $("visitorStatus").classList.add("status-error");
+    button.disabled = false;
+    button.textContent = "أوافق وأشارك بيانات الزيارة";
+  }
+}
+
+async function recordAnonymousVisit() {
+  const button = $("consentDecline");
+  button.disabled = true;
   try {
     await api("/api/sessions/" + encodeURIComponent(shareToken) + "/view", {
       method: "POST",
       body: "{}"
     });
-    setText("visitorStatus", "تم تسجيل مشاهدة مجهولة دون جمع عنوان IP أو الموقع أو بيانات الجهاز.");
+    setText("visitorStatus", "تم تسجيل وقت المشاهدة فقط. لم تُجمع بيانات الشبكة أو الجهاز أو الموقع.");
+    $("consentActions").classList.add("hidden");
   } catch (error) {
     setText("visitorStatus", error.message);
     $("visitorStatus").classList.add("status-error");
+    button.disabled = false;
   }
 }
 
@@ -257,7 +288,8 @@ function initAdmin() {
 function initVisitor() {
   $("ownerPanel").classList.add("hidden");
   $("visitorPanel").classList.remove("hidden");
-  void recordVisitOnce();
+  $("consentAccept").addEventListener("click", recordConsentVisit);
+  $("consentDecline").addEventListener("click", recordAnonymousVisit);
 }
 
 if (isVisitor) initVisitor();
