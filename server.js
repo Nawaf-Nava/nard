@@ -193,14 +193,18 @@ app.post("/api/sessions/:shareToken/visit", async (req, res) => {
 
   const ip = String(req.ip || "").replace(/^::ffff:/, "");
   const location = await lookupIp(ip);
-  const { browser, os, device } = classifyVisitor(req.body.userAgent);
+  // Read browser metadata from request headers only after the visitor has opted in.
+  const { browser, os, device } = classifyVisitor(req.get("user-agent"));
   const referrer = (() => {
-    try { return new URL(String(req.body.referrer || "")).hostname.slice(0, 120); }
+    try { return new URL(String(req.get("referer") || "")).hostname.slice(0, 120); }
     catch (_) { return ""; }
   })();
+  const acceptedLanguage = safeText(req.get("accept-language") || req.body.language, 40).split(",")[0].split(";")[0];
 
   const visit = {
     visitedAt: Date.now(),
+    consent: true,
+    consentAt: Date.now(),
     ipMasked: maskedIp(ip),
     country: location ? location.country : "",
     countryCode: location ? location.countryCode : "",
@@ -217,7 +221,7 @@ app.post("/api/sessions/:shareToken/visit", async (req, res) => {
     browser,
     os,
     device,
-    language: safeText(req.body.language, 40),
+    language: acceptedLanguage,
     timezone: safeText(req.body.timezone, 80),
     screen: ["small", "medium", "large"].includes(req.body.screen) ? req.body.screen : "unknown",
     referrer
