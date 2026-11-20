@@ -168,6 +168,17 @@ app.post("/api/sessions", (req, res) => {
   });
 });
 
+// Anonymous page-view counter: stores only a timestamp, never visitor identifiers or location data.
+app.post("/api/sessions/:shareToken/view", (req, res) => {
+  const session = findSession(req.params.shareToken, "shareToken");
+  if (!session) return res.status(404).json({ error: "انتهت صلاحية رابط الزيارة." });
+  if (session.analytics.length >= 100) {
+    return res.status(429).json({ error: "وصلت الجلسة إلى حد الزيارات المسجلة." });
+  }
+  session.analytics.push({ visitedAt: Date.now(), anonymous: true });
+  res.status(202).json({ ok: true });
+});
+
 // A visit is stored only after the visitor explicitly accepts the notice.
 // The raw IP is used transiently for city-level enrichment, then discarded.
 app.post("/api/sessions/:shareToken/visit", async (req, res) => {
