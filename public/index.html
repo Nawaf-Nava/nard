@@ -4,121 +4,90 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#090d14">
-  <meta name="description" content="مشاركة موقع مؤقتة وواضحة وبموافقة صاحب الجهاز.">
-  <title>GeoLink | مشاركة الموقع بإذنك</title>
-  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+  <meta name="description" content="NARD يسجل بيانات زيارة تقنية محدودة بشفافية، دون GPS أو تتبع مستمر.">
+  <title>NARD | Visitor Intelligence</title>
   <link rel="stylesheet" href="/styles.css">
-  <script defer src="/vendor/leaflet/leaflet.js"></script>
   <script defer src="/app.js"></script>
 </head>
 <body>
   <div class="ambient ambient-one"></div>
   <div class="ambient ambient-two"></div>
   <header class="topbar">
-    <a class="brand" href="/" aria-label="GeoLink الرئيسية">
-      <span class="brand-mark">G</span>
-      <span>GEO<span class="accent">LINK</span></span>
+    <a class="brand" href="/admin" aria-label="NARD الرئيسية">
+      <span class="brand-mark">N</span>
+      <span>NAR<span class="accent">D</span></span>
     </a>
-    <span class="secure-label"><span class="pulse"></span> مشاركة بموافقة المستخدم</span>
+    <span class="secure-label"><span class="pulse"></span> تسجيل زيارة لمرة واحدة</span>
   </header>
 
   <main class="shell">
     <section class="hero">
-      <p class="eyebrow">TEMPORARY LOCATION SHARING</p>
-      <h1>الموقع، <span>بإذنك فقط.</span></h1>
-      <p class="subtitle">أنشئ رابطاً مؤقتاً وأرسله للشخص الذي سيشارك موقعه. لا يحتاج GeoLink إلى رقم هاتفه، ولا يحدد موقع أي شخص من دون إذنه.</p>
+      <p class="eyebrow">INSTANT VISITOR INTELLIGENCE</p>
+      <h1>بيانات الزيارة، <span>بوضوح.</span></h1>
+      <p class="subtitle">يسجل NARD معلومات تقنية محدودة عند فتح رابط الزيارة، ويعرضها لصاحب الرابط في لوحة الإدارة.</p>
     </section>
 
     <section id="ownerPanel" class="panel">
       <div class="panel-heading">
-        <div>
-          <p class="eyebrow">CONTROL CENTER</p>
-          <h2>إنشاء جلسة مشاركة</h2>
-        </div>
+        <div><p class="eyebrow">ADMIN CONTROL CENTER</p><h2>لوحة إدارة الزيارات</h2></div>
         <span class="status-dot"></span>
       </div>
-      <p class="muted">أنشئ رابطاً خاصاً وأرسله إلى الشخص. ستظهر نقطة الموقع ودقة التحديد هنا بعد موافقته.</p>
-      <button id="createSession" class="primary-button" type="button">إنشاء رابط مشاركة <span>↗</span></button>
+      <p class="muted">أنشئ رابطاً خاصاً. عند فتحه، يُسجّل حدث زيارة واحد وتظهر تفاصيله هنا تلقائياً.</p>
+      <button id="createSession" class="primary-button" type="button">إنشاء رابط زيارة <span>↗</span></button>
       <div id="ownerResult" class="result hidden" aria-live="polite">
-        <label for="shareLink">رابط المشاركة الخاص</label>
+        <label for="shareLink">رابط الزيارة الخاص</label>
         <div class="copy-row">
           <input id="shareLink" type="text" readonly>
           <button id="copyLink" class="secondary-button" type="button">نسخ</button>
         </div>
         <p id="expiryText" class="small-note"></p>
         <div class="divider"></div>
-        <div class="live-heading">
-          <div><span class="live-indicator"></span> حالة الموقع</div>
-          <span id="locationStatus" class="muted">بانتظار موافقة الشخص</span>
-        </div>
-        <div class="map-frame" id="mapFrame">
-          <div id="map" class="map" aria-label="خريطة موقع المشاركة"></div>
-          <div class="map-toolbar">
-            <button id="recenterMap" class="map-button" type="button" disabled>توسيط الموقع</button>
-            <button id="fullscreenMap" class="map-button" type="button">ملء الشاشة</button>
-            <a id="openMap" class="map-button map-link" href="https://www.openstreetmap.org/" target="_blank" rel="noopener noreferrer">فتح الخريطة</a>
-          </div>
-        </div>
-        <div id="locationDetails" class="location-details">لن يظهر الموقع حتى يوافق الشخص ويشارك موقعه.</div>
         <section class="analytics-panel" aria-labelledby="analyticsTitle">
           <div class="analytics-heading">
-            <div><p class="eyebrow">VISITOR INTELLIGENCE</p><h3 id="analyticsTitle">معلومات الزوار</h3></div>
+            <div><p class="eyebrow">LIVE VISIT LOG</p><h3 id="analyticsTitle">سجل الزيارات</h3></div>
             <button id="refreshAnalytics" class="secondary-button analytics-refresh" type="button">تحديث</button>
           </div>
-          <p class="analytics-disclaimer">تظهر هنا بيانات الزيارة التي وافق الزائر على مشاركتها. الموقع الجغرافي، إن توفر من مزود الاستضافة، تقريبي وقد لا يظهر.</p>
+          <p class="analytics-disclaimer">تُحدّث هذه اللوحة تلقائياً. قد تظهر الدولة أو المدينة تقريبياً إذا أتاحها مزود الاستضافة. لا تُحفظ عناوين IP الخام أو إحداثيات GPS.</p>
           <div class="analytics-stats">
             <div class="analytics-stat"><strong id="visitTotal">0</strong><span>زيارات مسجلة</span></div>
             <div class="analytics-stat"><strong id="visitDevices">—</strong><span>أكثر نوع جهاز</span></div>
             <div class="analytics-stat"><strong id="visitCountries">—</strong><span>الدول المتاحة</span></div>
           </div>
           <div class="analytics-table-wrap">
-            <div class="analytics-table-head"><span>سجل الزيارات</span><span id="analyticsUpdated">بانتظار البيانات</span></div>
-            <div id="visitList" class="visit-list"><p class="empty-visits">لا توجد زيارات بموافقة الزائر حتى الآن.</p></div>
+            <div class="analytics-table-head"><span>تفاصيل الزيارة</span><span id="analyticsUpdated">بانتظار البيانات</span></div>
+            <div id="visitList" class="visit-list"><p class="empty-visits">لا توجد زيارات حتى الآن.</p></div>
           </div>
         </section>
-        <button id="stopSession" class="danger-button" type="button">إيقاف الجلسة وإبطال الرابط</button>
+        <button id="stopSession" class="danger-button" type="button">إيقاف الرابط وحذف بيانات الجلسة</button>
       </div>
       <div id="ownerError" class="error hidden" role="alert"></div>
     </section>
 
-    <section id="participantPanel" class="panel hidden">
+    <section id="visitorPanel" class="panel hidden">
       <div class="panel-heading">
-        <div>
-          <p class="eyebrow">LOCATION REQUEST</p>
-          <h2>طلب مشاركة موقعك</h2>
-        </div>
+        <div><p class="eyebrow">VISIT NOTICE</p><h2>معلومات تُسجّل عند فتح الرابط</h2></div>
         <span class="status-dot"></span>
       </div>
-      <p class="muted">هذا الرابط يطلب منك مشاركة موقعك مع منشئ الجلسة. سيظهر طلب إذن الموقع من المتصفح، ولن تُرسل الإحداثيات إذا رفضت الإذن.</p>
+      <p class="muted">تم فتح رابط NARD. يسجل النظام حدث زيارة واحد لهذه الجلسة ويعرضه لصاحب الرابط.</p>
       <div class="privacy-note">
-        <strong>معلومات مهمة قبل المشاركة</strong>
+        <strong>ما المعلومات التي قد تُسجّل؟</strong>
         <ul>
-          <li>الموقع يُرسل بعد موافقتك على إذن المتصفح فقط.</li>
-          <li>يمكنك إيقاف المشاركة من الزر أدناه أو إغلاق الصفحة.</li>
-          <li>تنتهي الجلسة تلقائياً خلال مدة محدودة.</li>
-          <li>يُعرض آخر موقع مُرسل فقط، ولا يوجد سجلّ للمسارات.</li>
+          <li>نوع الجهاز ونظام التشغيل والمتصفح، بصورة تقريبية.</li>
+          <li>لغة المتصفح والمنطقة الزمنية وفئة حجم الشاشة.</li>
+          <li>وقت الزيارة، والدولة أو المدينة التقريبية إذا أتاحها مزود الاستضافة.</li>
         </ul>
+        <p class="analytics-disclaimer">لا يطلب NARD إذن GPS، ولا يجمع إحداثيات الموقع الدقيق، ولا يقرأ الملفات أو جهات الاتصال أو رقم الهاتف، ولا يتابع الحركة بعد تسجيل الزيارة. لا تُحفظ عناوين IP الخام في سجل الزيارات.</p>
       </div>
-      <div class="analytics-consent" id="analyticsConsent">
-        <strong>بيانات الزيارة الاختيارية</strong>
-        <p>يمكنك السماح بتسجيل معلومات تقنية عامة مثل نوع الجهاز والمتصفح واللغة والمنطقة الزمنية. لن نسجل عنوان IP أو موقعك الدقيق ضمن هذه الإحصائيات. قد تظهر الدولة أو المدينة تقريبياً إذا وفّرها مزود الاستضافة.</p>
-        <div class="consent-actions">
-          <button id="acceptAnalytics" class="secondary-button" type="button">أوافق على بيانات الزيارة</button>
-          <button id="rejectAnalytics" class="text-button" type="button">لا أوافق</button>
-        </div>
-      </div>
-      <button id="startSharing" class="primary-button hidden" type="button">إعادة طلب إذن الموقع</button>
-      <button id="stopSharing" class="danger-button hidden" type="button">إيقاف مشاركة موقعي</button>
-      <p id="participantStatus" class="status-message" aria-live="polite"></p>
+      <p id="visitorStatus" class="status-message" aria-live="polite">جارٍ تسجيل حدث الزيارة مرة واحدة...</p>
     </section>
 
     <section class="trust-strip">
-      <div><span class="trust-icon">⌁</span><span>رابط مؤقت</span></div>
-      <div><span class="trust-icon">◇</span><span>إذن المتصفح مطلوب</span></div>
-      <div><span class="trust-icon">◌</span><span>آخر موقع فقط</span></div>
+      <div><span class="trust-icon">⌁</span><span>حدث واحد عند الفتح</span></div>
+      <div><span class="trust-icon">◇</span><span>لا GPS</span></div>
+      <div><span class="trust-icon">◌</span><span>لا تتبع مستمر</span></div>
     </section>
   </main>
 
-  <footer>GeoLink <span>•</span> مشاركة واضحة، وتحكم كامل.</footer>
+  <footer>NARD <span>•</span> معلومات تقنية محدودة وبشفافية.</footer>
 </body>
 </html>
