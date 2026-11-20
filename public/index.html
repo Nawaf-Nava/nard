@@ -60,6 +60,22 @@
           </div>
         </div>
         <div id="locationDetails" class="location-details">لن يظهر الموقع حتى يوافق الشخص ويشارك موقعه.</div>
+        <section class="analytics-panel" aria-labelledby="analyticsTitle">
+          <div class="analytics-heading">
+            <div><p class="eyebrow">VISITOR INTELLIGENCE</p><h3 id="analyticsTitle">معلومات الزوار</h3></div>
+            <button id="refreshAnalytics" class="secondary-button analytics-refresh" type="button">تحديث</button>
+          </div>
+          <p class="analytics-disclaimer">تظهر هنا بيانات الزيارة التي وافق الزائر على مشاركتها. الموقع الجغرافي، إن توفر من مزود الاستضافة، تقريبي وقد لا يظهر.</p>
+          <div class="analytics-stats">
+            <div class="analytics-stat"><strong id="visitTotal">0</strong><span>زيارات مسجلة</span></div>
+            <div class="analytics-stat"><strong id="visitDevices">—</strong><span>أكثر نوع جهاز</span></div>
+            <div class="analytics-stat"><strong id="visitCountries">—</strong><span>الدول المتاحة</span></div>
+          </div>
+          <div class="analytics-table-wrap">
+            <div class="analytics-table-head"><span>سجل الزيارات</span><span id="analyticsUpdated">بانتظار البيانات</span></div>
+            <div id="visitList" class="visit-list"><p class="empty-visits">لا توجد زيارات بموافقة الزائر حتى الآن.</p></div>
+          </div>
+        </section>
         <button id="stopSession" class="danger-button" type="button">إيقاف الجلسة وإبطال الرابط</button>
       </div>
       <div id="ownerError" class="error hidden" role="alert"></div>
@@ -82,6 +98,14 @@
           <li>تنتهي الجلسة تلقائياً خلال مدة محدودة.</li>
           <li>يُعرض آخر موقع مُرسل فقط، ولا يوجد سجلّ للمسارات.</li>
         </ul>
+      </div>
+      <div class="analytics-consent" id="analyticsConsent">
+        <strong>بيانات الزيارة الاختيارية</strong>
+        <p>يمكنك السماح بتسجيل معلومات تقنية عامة مثل نوع الجهاز والمتصفح واللغة والمنطقة الزمنية. لن نسجل عنوان IP أو موقعك الدقيق ضمن هذه الإحصائيات. قد تظهر الدولة أو المدينة تقريبياً إذا وفّرها مزود الاستضافة.</p>
+        <div class="consent-actions">
+          <button id="acceptAnalytics" class="secondary-button" type="button">أوافق على بيانات الزيارة</button>
+          <button id="rejectAnalytics" class="text-button" type="button">لا أوافق</button>
+        </div>
       </div>
       <button id="startSharing" class="primary-button hidden" type="button">إعادة طلب إذن الموقع</button>
       <button id="stopSharing" class="danger-button hidden" type="button">إيقاف مشاركة موقعي</button>
