@@ -36,23 +36,12 @@ function mapSearchUrl(query) {
 }
 
 async function recordVisitOnce() {
-  const width = window.innerWidth || 0;
-  const screen = width < 600 ? "small" : width < 1024 ? "medium" : "large";
-
   try {
-    await api("/api/sessions/" + encodeURIComponent(shareToken) + "/visit", {
+    await api("/api/sessions/" + encodeURIComponent(shareToken) + "/view", {
       method: "POST",
-      body: JSON.stringify({
-        consent: true,
-        userAgent: navigator.userAgent,
-        language: navigator.language || "",
-        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
-        screen,
-        referrer: document.referrer || ""
-      })
+      body: "{}"
     });
-    $("visitorConsent").classList.add("hidden");
-    setText("visitorStatus", "تم تسجيل الزيارة. يمكنك إغلاق هذه الصفحة الآن.");
+    setText("visitorStatus", "تم تسجيل مشاهدة مجهولة دون جمع عنوان IP أو الموقع أو بيانات الجهاز.");
   } catch (error) {
     setText("visitorStatus", error.message);
     $("visitorStatus").classList.add("status-error");
@@ -99,7 +88,7 @@ function renderVisits(data) {
     const heading = document.createElement("div");
     heading.className = "visit-row-heading";
     const title = document.createElement("strong");
-    title.textContent = [visit.flag, visit.city, visit.region, visit.country].filter(Boolean).join(" · ") || "الموقع التقريبي غير متاح";
+    title.textContent = visit.anonymous ? "مشاهدة مجهولة، دون بيانات شخصية" : ([visit.flag, visit.city, visit.region, visit.country].filter(Boolean).join(" · ") || "الموقع التقريبي غير متاح");
     const time = document.createElement("span");
     time.textContent = new Date(visit.visitedAt).toLocaleString("ar");
     heading.append(title, time);
@@ -268,15 +257,7 @@ function initAdmin() {
 function initVisitor() {
   $("ownerPanel").classList.add("hidden");
   $("visitorPanel").classList.remove("hidden");
-  $("acceptConsent").addEventListener("click", async () => {
-    $("acceptConsent").disabled = true;
-    $("acceptConsent").textContent = "جارٍ التسجيل...";
-    await recordVisitOnce();
-  });
-  $("declineConsent").addEventListener("click", () => {
-    $("visitorConsent").classList.add("hidden");
-    setText("visitorStatus", "لم يتم تسجيل بيانات الزيارة. يمكنك إغلاق الصفحة.");
-  });
+  void recordVisitOnce();
 }
 
 if (isVisitor) initVisitor();
